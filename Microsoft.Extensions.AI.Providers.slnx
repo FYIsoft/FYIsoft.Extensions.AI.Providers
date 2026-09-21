@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Microsoft.Extensions.AI.Anthropic/Microsoft.Extensions.AI.Anthropic.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Jev/Microsoft.Extensions.AI.Jev.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Microsoft.Extensions.AI.Anthropic.Tests/Microsoft.Extensions.AI.Anthropic.Tests.csproj" />
+    <Project Path="tests/Microsoft.Extensions.AI.Jev.Tests/Microsoft.Extensions.AI.Jev.Tests.csproj" />
+  </Folder>
+</Solution>
