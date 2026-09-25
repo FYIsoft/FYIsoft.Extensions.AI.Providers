@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- Package Metadata -->
+    <!-- nuget.org reserves the Microsoft.* prefix, so the package and assembly ship under FYIsoft.
+         The namespaces stay on Microsoft.Extensions.AI so the extension methods need no extra using. -->
+    <PackageId>FYIsoft.Extensions.AI.Anthropic</PackageId>
+    <AssemblyName>FYIsoft.Extensions.AI.Anthropic</AssemblyName>
+    <Version>0.4.2-preview</Version>
+    <Description>Integration of Anthropic's Claude AI models with Microsoft.Extensions.AI abstractions framework. Supports both Azure Anthropic Foundry (Azure-hosted) and standard Anthropic API.</Description>
+    <PackageTags>AI;Anthropic;Claude;Microsoft.Extensions.AI;Azure;ChatClient;LLM</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Anthropic.Foundry" />
+  </ItemGroup>
+</Project>
