@@ -7,6 +7,8 @@
 | [Microsoft.Extensions.AI.Anthropic](src/Microsoft.Extensions.AI.Anthropic/README.md) | Anthropic Claude (API + Azure Foundry) | Full `IChatClient`: streaming, tools |
 | [Microsoft.Extensions.AI.Jev](src/Microsoft.Extensions.AI.Jev/README.md) | TypeSafe AI Jev | Typed `JevClient` port of `@typesafe-ai/sdk` v0.6.0, plus an `IChatClient` adapter for structured judgements |
 
+The [SupportDeskSample](samples/SupportDeskSample/README.md) console app uses both providers together. Jev triages each support ticket, Claude drafts a reply with a tool call, and Jev reviews the draft.
+
 ## Build
 
 ```powershell
