@@ -93,6 +93,8 @@ internal static class AnthropicMessageConverter
                 "Message list must contain at least one non-system message.", nameof(messages));
         }
 
+        Role? lastRole = null;
+
         foreach (var message in nonSystemMessages)
         {
             Role role;
@@ -118,6 +120,23 @@ internal static class AnthropicMessageConverter
             // Convert content
             var contentBlocks = AnthropicContentConverter.ToAnthropicContent(message.Contents);
 
+            // Anthropic requires the roles to alternate, so neighbouring messages that share a role are
+            // merged into one message carrying both sets of content blocks. Two callers rely on this:
+            // Microsoft.Extensions.AI's structured output appends a second user message holding the schema,
+            // and parallel tool calls produce one tool message per result, which Anthropic expects to
+            // arrive as several tool_result blocks inside a single user message.
+            if (anthropicMessages.Count > 0 &&
+                lastRole == role &&
+                anthropicMessages[^1].Content.TryPickContentBlockParams(out var previousBlocks))
+            {
+                anthropicMessages[^1] = new MessageParam
+                {
+                    Role = role,
+                    Content = new List<ContentBlockParam>([.. previousBlocks, .. contentBlocks]),
+                };
+                continue;
+            }
+
             var anthropicMessage = new MessageParam
             {
                 Role = role,
@@ -125,6 +144,7 @@ internal static class AnthropicMessageConverter
             };
 
             anthropicMessages.Add(anthropicMessage);
+            lastRole = role;
         }
 
         // Validate alternating user/assistant pattern
