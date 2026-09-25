@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/SupportDeskSample/SupportDeskSample.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Microsoft.Extensions.AI.Anthropic/Microsoft.Extensions.AI.Anthropic.csproj" />
     <Project Path="src/Microsoft.Extensions.AI.Jev/Microsoft.Extensions.AI.Jev.csproj" />

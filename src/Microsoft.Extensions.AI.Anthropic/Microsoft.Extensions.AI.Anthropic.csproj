@@ -5,7 +5,7 @@
 
     <!-- Package Metadata -->
     <PackageId>Microsoft.Extensions.AI.Anthropic</PackageId>
-    <Version>0.4.1-preview</Version>
+    <Version>0.4.2-preview</Version>
     <Description>Integration of Anthropic's Claude AI models with Microsoft.Extensions.AI abstractions framework. Supports both Azure Anthropic Foundry (Azure-hosted) and standard Anthropic API.</Description>
     <PackageTags>AI;Anthropic;Claude;Microsoft.Extensions.AI;Azure;ChatClient;LLM</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
