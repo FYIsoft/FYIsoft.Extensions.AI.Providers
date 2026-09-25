@@ -54,6 +54,9 @@ public sealed class AccountDirectory
 
     public AIFunction GetAccountTool { get; }
 
+    /// <summary>The same lookup the tool performs, for demos that need the record without a tool call.</summary>
+    public static object Lookup(string email) => GetAccount(email);
+
     [Description("Looks up a Contoso Cloud customer account by email: plan, recent charges, open incidents and the plans on offer.")]
     private static object GetAccount([Description("The customer's email address.")] string email) =>
         Accounts.TryGetValue(email.Trim(), out var account)

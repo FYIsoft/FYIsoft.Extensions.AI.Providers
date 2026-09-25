@@ -159,22 +159,9 @@ public sealed class SupportDesk(
         }
     }
 
-    private static void Heading(string text)
-    {
-        Console.WriteLine();
-        WriteLine($"== {text} ".PadRight(72, '='), ConsoleColor.Cyan);
-    }
+    private static void Heading(string text) => ConsoleFormat.Heading(text);
 
-    private static void Label(string text)
-    {
-        Console.WriteLine();
-        WriteLine(text, ConsoleColor.Magenta);
-    }
+    private static void Label(string text) => ConsoleFormat.Label(text);
 
-    private static void WriteLine(string text, ConsoleColor color)
-    {
-        Console.ForegroundColor = color;
-        Console.WriteLine(text);
-        Console.ResetColor();
-    }
+    private static void WriteLine(string text, ConsoleColor color) => ConsoleFormat.Write(text, color);
 }

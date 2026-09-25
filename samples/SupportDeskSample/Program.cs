@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SupportDeskSample;
+using SupportDeskSample.Demos;
 
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
@@ -58,6 +59,10 @@ builder.Services.AddKeyedChatClient(SupportDesk.JevKey, sp => sp.GetRequiredServ
 
 builder.Services.AddSingleton<AccountDirectory>();
 builder.Services.AddSingleton<SupportDesk>();
+builder.Services.AddSingleton<CompareDemo>();
+builder.Services.AddSingleton<RouteDemo>();
+builder.Services.AddSingleton<RubricDemo>();
+builder.Services.AddSingleton<LimitsDemo>();
 
 using var host = builder.Build();
 
@@ -73,7 +78,29 @@ IReadOnlyList<string> tickets = config["ticket"] is { Length: > 0 } ticket ? [ti
 
 try
 {
-    await host.Services.GetRequiredService<SupportDesk>().RunAsync(tickets, cts.Token);
+    var services = host.Services;
+    switch (config["demo"]?.ToLowerInvariant())
+    {
+        case null or "" or "desk":
+            await services.GetRequiredService<SupportDesk>().RunAsync(tickets, cts.Token);
+            break;
+        case "compare":
+            await services.GetRequiredService<CompareDemo>().RunAsync(cts.Token);
+            break;
+        case "route":
+            await services.GetRequiredService<RouteDemo>().RunAsync(cts.Token);
+            break;
+        case "rubric":
+            await services.GetRequiredService<RubricDemo>().RunAsync(cts.Token);
+            break;
+        case "limits":
+            await services.GetRequiredService<LimitsDemo>().RunAsync(cts.Token);
+            break;
+        default:
+            Console.Error.WriteLine($"Unknown demo '{config["demo"]}'. Use desk, compare, route, rubric or limits.");
+            return 1;
+    }
+
     return 0;
 }
 catch (OperationCanceledException) when (cts.IsCancellationRequested)
