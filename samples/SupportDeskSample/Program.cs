@@ -14,7 +14,11 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     Args = args,
     ContentRootPath = AppContext.BaseDirectory,
 });
+// User secrets sit under the sources Host.CreateApplicationBuilder already added, so environment
+// variables and command-line switches still override them.
 builder.Configuration.AddUserSecrets<Program>(optional: true);
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddCommandLine(args);
 
 var config = builder.Configuration;
 var anthropicKey = config["Anthropic:ApiKey"] is { Length: > 0 } key ? key : Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");

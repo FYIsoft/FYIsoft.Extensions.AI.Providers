@@ -12,7 +12,7 @@ Both chat clients are registered as keyed services (`"claude"`, `"jev"`) with `A
 
 ## Configure
 
-Keys are read from user secrets, then environment variables. From this folder:
+Keys come from user secrets, which environment variables and `--Section:Key` switches override. From this folder:
 
 ```powershell
 # Claude on Azure AI Foundry
