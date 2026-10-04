@@ -82,3 +82,19 @@ Mapping rules:
 - Streaming returns the complete response as one update.
 - `ChatOptions.Tools` is ignored.
 - `UsageDetails` is filled from `usage`. Only input tokens are billed.
+
+## Verification
+
+Offline tests cover the typed client, question/schema conversion, API errors, retries, timeouts,
+cancellation and dependency injection. Live tests are disabled unless both `JEV_LIVE_TESTS=1`
+and `TYPESAFE_API_KEY` are configured:
+
+```powershell
+$env:JEV_LIVE_TESTS = '1'
+dotnet test tests/FYIsoft.Extensions.AI.Jev.Tests -c Release --filter 'Category=Live' --logger trx
+```
+
+These tests call the provider to check models, all question types, structured output and
+authentication failures. All four passed live on 2026-10-04 using the sample's existing authorized
+TypeSafe connection. The combined SupportDeskSample also completed Jev triage and draft review
+with a real Foundry Claude function call between them.

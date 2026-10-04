@@ -24,7 +24,7 @@ namespace Microsoft.Extensions.AI.Anthropic;
 /// </item>
 /// <item>
 /// <term><see cref="DataContent"/> (PDF)</term>
-/// <description>DocumentBlockParam with base64 (beta feature)</description>
+/// <description>DocumentBlockParam with base64</description>
 /// </item>
 /// <item>
 /// <term><see cref="FunctionCallContent"/></term>
@@ -45,7 +45,7 @@ namespace Microsoft.Extensions.AI.Anthropic;
 ///
 /// <para>
 /// <strong>PDF Support</strong>:
-/// PDF support requires Anthropic's beta API. PDFs are converted to base64 encoding.
+/// PDFs are accepted as base64 document blocks or HTTPS document URLs, with optional citations.
 /// </para>
 /// </remarks>
 internal static class AnthropicContentConverter
@@ -102,12 +102,14 @@ internal static class AnthropicContentConverter
                     blocks.Add(ConvertFunctionResult(functionResult));
                     break;
 
-                case UriContent uriContent:
-                    // URI content is not directly supported by Anthropic
-                    // Could potentially fetch and convert to DataContent, but that's beyond scope
-                    throw new NotSupportedException(
-                        $"UriContent is not directly supported by Anthropic. " +
-                        $"URI: {uriContent.Uri}. Consider fetching the content and using DataContent instead.");
+                case UriContent uriContent when uriContent.MediaType == PdfMediaType && uriContent.Uri.Scheme == "https":
+                    blocks.Add(AnthropicProviderFeatures.Document(content, new System.Text.Json.Nodes.JsonObject
+                        { ["type"] = "url", ["url"] = uriContent.Uri.ToString() }));
+                    break;
+                case UriContent:
+                    throw new NotSupportedException("Only HTTPS PDF UriContent is supported. Use DataContent for other inputs.");
+                case TextReasoningContent or WebSearchToolCallContent or WebSearchToolResultContent or McpServerToolCallContent or McpServerToolResultContent:
+                    throw new ArgumentException("Provider content requires its original replay envelope. Preserve response message metadata when saving history.");
 
                 case UsageContent:
                     // Usage content is metadata, not part of the message content
@@ -136,19 +138,18 @@ internal static class AnthropicContentConverter
     {
         ArgumentNullException.ThrowIfNull(block);
 
-        // ContentBlock is a union type - use TryPick methods
-        if (block.TryPickText(out var textBlock))
-        {
-            return new TextContent(textBlock.Text);
-        }
+        // Raw union constructors retain JSON without selecting a typed variant. Read the wire
+        // discriminator so both SDK responses and assembled streaming blocks project identically.
+        var json = block.Json;
+        if (AnthropicProviderFeatures.Project(json) is { } projected) return projected;
 
-        if (block.TryPickToolUse(out var toolUse))
+        if (AnthropicContentEnvelope.String(json, "type") == "tool_use")
         {
-            return ConvertToolUseToFunctionCall(toolUse);
+            return ConvertToolUseToFunctionCall(JsonSerializer.Deserialize<ToolUseBlock>(json)!);
         }
 
         // Note: Images are not included in response ContentBlocks (they're only in requests)
-        // Note: Anthropic may add new block types in the future (thinking, etc.)
+        // Unknown response blocks are preserved by the replay-aware projection.
         return null;
     }
 
@@ -187,14 +188,14 @@ internal static class AnthropicContentConverter
             return new ImageBlockParam(new ImageBlockParamSource(base64Source));
         }
 
-        // PDFs are not currently supported in the standard API for input
-        // They would require DocumentBlockParam which may be in beta
         if (string.Equals(mediaTypeString, PdfMediaType, StringComparison.OrdinalIgnoreCase))
         {
-            throw new NotSupportedException(
-                "PDF content is not currently supported for input messages. " +
-                "This may require beta API features.");
+            return AnthropicProviderFeatures.Document(dataContent, new System.Text.Json.Nodes.JsonObject
+            { ["type"] = "base64", ["media_type"] = PdfMediaType, ["data"] = Convert.ToBase64String(dataContent.Data.Span) });
         }
+        if (string.Equals(mediaTypeString, "text/plain", StringComparison.OrdinalIgnoreCase))
+            return AnthropicProviderFeatures.Document(dataContent, new System.Text.Json.Nodes.JsonObject
+            { ["type"] = "text", ["media_type"] = "text/plain", ["data"] = System.Text.Encoding.UTF8.GetString(dataContent.Data.Span) });
 
         throw new NotSupportedException(
             $"Media type '{mediaTypeString}' is not supported. " +

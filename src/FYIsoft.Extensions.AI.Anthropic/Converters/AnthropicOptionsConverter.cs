@@ -44,7 +44,8 @@ namespace Microsoft.Extensions.AI.Anthropic;
 /// <strong>Tool Mode Mapping</strong>:
 /// <list type="bullet">
 /// <item><see cref="AutoChatToolMode"/> → tool_choice: "auto"</item>
-/// <item><see cref="RequiredChatToolMode"/> → tool_choice: "required"</item>
+/// <item><see cref="NoneChatToolMode"/> → tool_choice: "none"</item>
+/// <item><see cref="RequiredChatToolMode"/> without a function name → tool_choice: "any"</item>
 /// <item>Specific function → tool_choice: {type: "tool", name: "function_name"}</item>
 /// </list>
 /// </para>
@@ -58,12 +59,14 @@ internal static class AnthropicOptionsConverter
     /// <param name="systemPrompt">The extracted system prompt, or null if none.</param>
     /// <param name="options">The chat options to convert.</param>
     /// <param name="defaultModelId">The default model ID to use if not specified in options.</param>
+    /// <param name="originalMessages">Original messages for preserving system cache breakpoints.</param>
     /// <returns>A configured <see cref="MessageCreateParams"/> instance.</returns>
     public static MessageCreateParams ToMessageCreateParams(
         List<MessageParam> messages,
         string? systemPrompt,
         ChatOptions? options,
-        string? defaultModelId)
+        string? defaultModelId,
+        IEnumerable<ChatMessage>? originalMessages = null)
     {
         var modelId = options?.ModelId ?? defaultModelId;
         if (string.IsNullOrWhiteSpace(modelId))
@@ -192,7 +195,7 @@ internal static class AnthropicOptionsConverter
         };
 #pragma warning restore CS0618
 
-        return createParams;
+        return AnthropicProviderFeatures.Apply(createParams, options, originalMessages);
     }
 
 
@@ -204,27 +207,11 @@ internal static class AnthropicOptionsConverter
         return toolMode switch
         {
             AutoChatToolMode => new ToolChoice(new ToolChoiceAuto()),
+            NoneChatToolMode => new ToolChoice(new ToolChoiceNone()),
+            RequiredChatToolMode { RequiredFunctionName: { } functionName } =>
+                new ToolChoice(new ToolChoiceTool { Name = functionName }),
             RequiredChatToolMode => new ToolChoice(new ToolChoiceAny()), // Anthropic uses "any" for required
-            _ when toolMode.GetType().Name.Contains("Function", StringComparison.OrdinalIgnoreCase) =>
-                ConvertSpecificFunctionMode(toolMode),
             _ => new ToolChoice(new ToolChoiceAuto()) // Default to auto
         };
-    }
-
-    /// <summary>
-    /// Converts a specific function tool mode to Anthropic format.
-    /// </summary>
-    private static ToolChoice ConvertSpecificFunctionMode(ChatToolMode toolMode)
-    {
-        // Try to extract function name from the tool mode
-        // This would require accessing the specific function name property
-        var functionNameProperty = toolMode.GetType().GetProperty("FunctionName");
-        if (functionNameProperty?.GetValue(toolMode) is string functionName)
-        {
-            return new ToolChoice(new ToolChoiceTool { Name = functionName });
-        }
-
-        // Fallback to auto if we can't determine the function name
-        return new ToolChoice(new ToolChoiceAuto());
     }
 }

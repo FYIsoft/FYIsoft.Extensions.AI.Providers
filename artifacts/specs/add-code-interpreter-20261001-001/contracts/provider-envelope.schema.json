@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Anthropic complete provider content envelope v1",
+  "description": "One complete top-level block. Connection scope is a mixing guard, not authorization. Sensitive content follows caller history policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "provider", "scope", "messageId", "blockIndex", "role", "complete", "block"],
+  "properties": {
+    "version": { "const": 1 },
+    "provider": { "type": "string", "enum": ["anthropic", "anthropic-foundry"] },
+    "scope": { "type": "string", "minLength": 1 },
+    "messageId": { "type": "string", "minLength": 1 },
+    "blockIndex": { "type": "integer", "minimum": 0 },
+    "role": { "const": "assistant" },
+    "complete": { "const": true },
+    "block": {
+      "type": "object",
+      "required": ["type"],
+      "properties": { "type": { "type": "string", "minLength": 1 } },
+      "additionalProperties": true
+    }
+  }
+}

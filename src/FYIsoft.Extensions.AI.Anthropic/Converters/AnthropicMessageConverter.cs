@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Anthropic.Models.Messages;
 
 namespace Microsoft.Extensions.AI.Anthropic;
@@ -35,6 +36,7 @@ internal static class AnthropicMessageConverter
     /// Converts Microsoft.Extensions.AI messages to Anthropic message format.
     /// </summary>
     /// <param name="messages">The chat messages to convert.</param>
+    /// <param name="execution">Request-local execution policy and replay scope.</param>
     /// <returns>
     /// A tuple containing:
     /// <list type="bullet">
@@ -48,7 +50,7 @@ internal static class AnthropicMessageConverter
     /// or violates Anthropic's alternating user/assistant pattern.
     /// </exception>
     public static (List<MessageParam> messages, string? systemPrompt) ToAnthropicMessages(
-        IEnumerable<ChatMessage> messages)
+        IEnumerable<ChatMessage> messages, AnthropicExecutionContext? execution = null)
     {
         ArgumentNullException.ThrowIfNull(messages);
 
@@ -118,7 +120,7 @@ internal static class AnthropicMessageConverter
             }
 
             // Convert content
-            var contentBlocks = AnthropicContentConverter.ToAnthropicContent(message.Contents);
+            var contentBlocks = execution?.ConvertMessage(message) ?? AnthropicContentConverter.ToAnthropicContent(message.Contents);
 
             // Anthropic requires the roles to alternate, so neighbouring messages that share a role are
             // merged into one message carrying both sets of content blocks. Two callers rely on this:
@@ -158,9 +160,10 @@ internal static class AnthropicMessageConverter
     /// </summary>
     /// <param name="message">The Anthropic message response.</param>
     /// <param name="metadata">The chat client metadata.</param>
+    /// <param name="execution">Request-local execution policy and replay scope.</param>
     /// <returns>A <see cref="ChatResponse"/> containing the converted message and metadata.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="message"/> is null.</exception>
-    public static ChatResponse FromAnthropicMessage(Message message, ChatClientMetadata metadata)
+    public static ChatResponse FromAnthropicMessage(Message message, ChatClientMetadata metadata, AnthropicExecutionContext? execution = null)
     {
         ArgumentNullException.ThrowIfNull(message);
 
@@ -176,12 +179,15 @@ internal static class AnthropicMessageConverter
 
         // Convert content blocks
         var contents = new List<AIContent>();
+        var preserve = execution is not null && (execution.Enabled || message.Content.Any(b => AnthropicProviderFeatures.Rich(b.Json)));
 
         if (message.Content is not null)
         {
             foreach (var block in message.Content)
             {
-                var convertedContent = AnthropicContentConverter.FromAnthropicContent(block);
+                var convertedContent = preserve
+                    ? AnthropicCodeExecutionConverter.Project(block.Json, execution!, message.ID, contents.Count)
+                    : AnthropicContentConverter.FromAnthropicContent(block);
                 if (convertedContent is not null)
                 {
                     contents.Add(convertedContent);
@@ -192,17 +198,20 @@ internal static class AnthropicMessageConverter
         // Add usage information if available
         if (message.Usage is not null)
         {
-            var usageDetails = new UsageDetails
-            {
-                InputTokenCount = message.Usage.InputTokens,
-                OutputTokenCount = message.Usage.OutputTokens,
-                TotalTokenCount = message.Usage.InputTokens + message.Usage.OutputTokens
-            };
+            var usageDetails = AnthropicProviderFeatures.Usage(JsonSerializer.SerializeToElement(message.Usage.RawData));
             contents.Add(new UsageContent(usageDetails));
         }
 
         // Create the response message
-        var responseMessage = new ChatMessage(role, contents);
+        var responseMessage = new ChatMessage(role, contents) { MessageId = message.ID };
+        if (preserve)
+        {
+            responseMessage.AdditionalProperties = AnthropicCodeExecutionConverter.Metadata(execution!,
+                contents.Where(c => c.AdditionalProperties?.ContainsKey(AnthropicCodeExecutionMetadata.RawContentBlock) == true)
+                    .Select(c => (JsonElement)c.AdditionalProperties![AnthropicCodeExecutionMetadata.RawContentBlock]!),
+                message.StopReason?.Raw(), true,
+                message.RawData.TryGetValue("container", out var container) ? container : null);
+        }
 
         // Set metadata properties
         if (!string.IsNullOrEmpty(message.ID))
@@ -218,27 +227,16 @@ internal static class AnthropicMessageConverter
         }
 
         // Map stop reason
-        ChatFinishReason? finishReason = message.StopReason?.Raw() switch
-        {
-            "end_turn" => ChatFinishReason.Stop,
-            "max_tokens" => ChatFinishReason.Length,
-            "stop_sequence" => ChatFinishReason.Stop,
-            "tool_use" => ChatFinishReason.ToolCalls,
-            _ => null
-        };
+        var finishReason = AnthropicCodeExecutionConverter.FinishReason(message.StopReason?.Raw());
 
         // Create and return the response
         return new ChatResponse(responseMessage)
         {
+            ResponseId = message.ID,
             ModelId = message.Model,
             FinishReason = finishReason,
             Usage = message.Usage is not null
-                ? new UsageDetails
-                {
-                    InputTokenCount = message.Usage.InputTokens,
-                    OutputTokenCount = message.Usage.OutputTokens,
-                    TotalTokenCount = message.Usage.InputTokens + message.Usage.OutputTokens
-                }
+                ? AnthropicProviderFeatures.Usage(JsonSerializer.SerializeToElement(message.Usage.RawData))
                 : null,
             AdditionalProperties = new AdditionalPropertiesDictionary
             {

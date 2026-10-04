@@ -25,6 +25,16 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build -c Release --no-restore -warnaserror
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test -c Release --no-build --filter 'Category!=Live' --logger trx --results-directory artifacts/test-results
+    - name: Pack
+      run: dotnet pack -c Release --no-build --output artifacts/packages
+    - name: Upload verification artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdk-verification
+        path: |
+          artifacts/test-results
+          artifacts/packages

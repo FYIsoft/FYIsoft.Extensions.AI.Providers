@@ -45,6 +45,7 @@ public sealed class AnthropicChatClient : IChatClient
     private readonly IMessageService _messageService;
     private readonly string? _modelId;
     private readonly ILogger _logger;
+    private readonly string _providerScope = Guid.NewGuid().ToString("N");
 
 
     /// <summary>
@@ -163,12 +164,15 @@ public sealed class AnthropicChatClient : IChatClient
         ArgumentNullException.ThrowIfNull(chatMessages);
 
         // Convert messages and options to Anthropic format
-        var (messages, systemPrompt) = AnthropicMessageConverter.ToAnthropicMessages(chatMessages);
+        var (execution, snapshot) = AnthropicExecutionContext.Prepare(chatMessages, options, Metadata.ProviderName!, _providerScope);
+        var (messages, systemPrompt) = AnthropicMessageConverter.ToAnthropicMessages(snapshot, execution);
         var createParams = AnthropicOptionsConverter.ToMessageCreateParams(
             messages,
             systemPrompt,
             options,
-            _modelId);
+            _modelId, snapshot);
+        if (execution.ContainerId is not null) createParams = createParams with { Container = execution.ContainerId };
+        var service = execution.DisableRetries ? _messageService.WithOptions(static o => o with { MaxRetries = 0 }) : _messageService;
 
         // Validate that we have a model ID
         if (string.IsNullOrWhiteSpace(createParams.Model))
@@ -179,17 +183,17 @@ public sealed class AnthropicChatClient : IChatClient
 
         // Call Anthropic API with single-retry-on-transient-5xx/IO policy
         var response = await StreamingRetryHelper.RetryAsync(
-            factory: ct => _messageService.Create(createParams, ct),
+            factory: ct => service.Create(createParams, ct),
             shouldRetry: ex => ex is Anthropic5xxException or AnthropicIOException,
-            onRetry: (ex, attempt) => _logger.LogWarning(ex,
+            onRetry: (ex, attempt) => _logger.LogWarning(
                 "Transient Anthropic failure ({ExceptionType}, attempt {Attempt}); retrying.",
                 ex.GetType().Name, attempt),
             retryDelay: RetryDelay,
-            maxAttempts: RetryMaxAttempts,
+            maxAttempts: execution.DisableRetries ? 1 : RetryMaxAttempts,
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
         // Convert response back to Microsoft.Extensions.AI format
-        return AnthropicMessageConverter.FromAnthropicMessage(response, Metadata);
+        return AnthropicMessageConverter.FromAnthropicMessage(response, Metadata, execution);
     }
 
     /// <inheritdoc/>
@@ -201,12 +205,15 @@ public sealed class AnthropicChatClient : IChatClient
         ArgumentNullException.ThrowIfNull(chatMessages);
 
         // Convert messages and options to Anthropic format
-        var (messages, systemPrompt) = AnthropicMessageConverter.ToAnthropicMessages(chatMessages);
+        var (execution, snapshot) = AnthropicExecutionContext.Prepare(chatMessages, options, Metadata.ProviderName!, _providerScope);
+        var (messages, systemPrompt) = AnthropicMessageConverter.ToAnthropicMessages(snapshot, execution);
         var createParams = AnthropicOptionsConverter.ToMessageCreateParams(
             messages,
             systemPrompt,
             options,
-            _modelId);
+            _modelId, snapshot);
+        if (execution.ContainerId is not null) createParams = createParams with { Container = execution.ContainerId };
+        var service = execution.DisableRetries ? _messageService.WithOptions(static o => o with { MaxRetries = 0 }) : _messageService;
 
         // Validate that we have a model ID
         if (string.IsNullOrWhiteSpace(createParams.Model))
@@ -218,15 +225,15 @@ public sealed class AnthropicChatClient : IChatClient
         // Call Anthropic streaming API with single-retry-on-transient-5xx/IO policy
         var stream = StreamingRetryHelper.RetryStreamAsync<ChatResponseUpdate>(
             streamFactory: () => AnthropicStreamingConverter.ConvertStreamAsync(
-                _messageService.CreateStreaming(createParams, cancellationToken),
+                service.CreateStreaming(createParams, cancellationToken),
                 Metadata,
-                cancellationToken),
+                cancellationToken, execution),
             shouldRetry: ex => ex is Anthropic5xxException or AnthropicIOException,
-            onRetry: (ex, attempt) => _logger.LogWarning(ex,
+            onRetry: (ex, attempt) => _logger.LogWarning(
                 "Transient Anthropic failure during streaming ({ExceptionType}, attempt {Attempt}); retrying.",
                 ex.GetType().Name, attempt),
             retryDelay: RetryDelay,
-            maxAttempts: RetryMaxAttempts,
+            maxAttempts: execution.DisableRetries ? 1 : RetryMaxAttempts,
             cancellationToken: cancellationToken);
 
         await foreach (var update in stream.ConfigureAwait(false))
