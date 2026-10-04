@@ -5,14 +5,15 @@ using Xunit;
 
 namespace Microsoft.Extensions.AI.Jev.Tests;
 
-/// <summary>A fact that only runs when <c>TYPESAFE_API_KEY</c> is set.</summary>
+/// <summary>A fact that only runs when live tests are explicitly enabled and credentials are set.</summary>
 public sealed class LiveFactAttribute : FactAttribute
 {
     public LiveFactAttribute()
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(JevClientOptions.ApiKeyEnvironmentVariable)))
+        if (Environment.GetEnvironmentVariable("JEV_LIVE_TESTS") != "1" ||
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(JevClientOptions.ApiKeyEnvironmentVariable)))
         {
-            Skip = $"Set {JevClientOptions.ApiKeyEnvironmentVariable} to run live API tests.";
+            Skip = $"Set JEV_LIVE_TESTS=1 and {JevClientOptions.ApiKeyEnvironmentVariable} to run live API tests.";
         }
     }
 }

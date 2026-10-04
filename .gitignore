@@ -483,3 +483,8 @@ $RECYCLE.BIN/
 
 # Local build output
 artifacts/
+
+# Keep specification documents reviewable while excluding build artifacts.
+!/artifacts/
+/artifacts/*
+!/artifacts/specs/

@@ -36,19 +36,31 @@ internal static class AnthropicToolConverter
         ArgumentNullException.ThrowIfNull(tools);
 
         var anthropicTools = new List<ToolUnion>();
+        if (tools.OfType<HostedCodeInterpreterTool>().Skip(1).Any())
+            throw new ArgumentException("Only one HostedCodeInterpreterTool is supported.", nameof(tools));
 
         foreach (var tool in tools)
         {
-            if (tool is AIFunction aiFunction)
+            if (tool is AIFunctionDeclaration aiFunction)
             {
                 var toolDef = ConvertFunction(aiFunction);
                 anthropicTools.Add(new ToolUnion(toolDef));
             }
+            else if (tool is HostedCodeInterpreterTool)
+            {
+                anthropicTools.Add(new ToolUnion(new CodeExecutionTool20250825()));
+            }
+            else if (tool is HostedWebSearchTool or HostedMcpServerTool)
+            {
+                anthropicTools.Add(AnthropicProviderFeatures.HostedTool(tool));
+            }
             else
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"Warning: Unsupported tool type {tool.GetType().Name} will be skipped.");
+                throw new NotSupportedException($"Unsupported tool type {tool.GetType().Name}.");
             }
+            var node = System.Text.Json.Nodes.JsonNode.Parse(anthropicTools[^1].Json.GetRawText())!.AsObject();
+            AnthropicProviderFeatures.Cache(node, tool.AdditionalProperties);
+            anthropicTools[^1] = new ToolUnion(JsonSerializer.SerializeToElement(node));
         }
 
         return anthropicTools;
@@ -57,7 +69,7 @@ internal static class AnthropicToolConverter
     /// <summary>
     /// Converts an AIFunction to an Anthropic Tool.
     /// </summary>
-    private static Tool ConvertFunction(AIFunction function)
+    private static Tool ConvertFunction(AIFunctionDeclaration function)
     {
         // AIFunctionDeclaration.JsonSchema already contains the input schema
         // AITool.Name and AITool.Description provide the metadata
