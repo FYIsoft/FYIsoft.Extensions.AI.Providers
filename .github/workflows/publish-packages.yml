@@ -1,0 +1,88 @@
+name: Publish GitHub Packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-github-packages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        run: dotnet build -c Release --no-restore -warnaserror -p:ContinuousIntegrationBuild=true
+      - name: Test offline
+        run: dotnet test -c Release --no-build --filter 'Category!=Live' --logger trx --results-directory artifacts/test-results
+      - name: Pack
+        run: dotnet pack -c Release --no-build --output artifacts/packages
+      - name: Verify package contents
+        run: python eng/verify-package-contents.py artifacts/packages
+      - name: Publish both SDKs
+        env:
+          PUBLISH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_FEED: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+        run: |
+          for package in artifacts/packages/*.nupkg; do
+            dotnet nuget push "$package" --source "$PACKAGE_FEED" --api-key "$PUBLISH_TOKEN" --skip-duplicate
+          done
+      - name: Restore and run a consumer from the published feed
+        shell: pwsh
+        env:
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          NuGetPackageSourceCredentials_github: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }};ValidAuthenticationTypes=Basic
+        run: |
+          $consumer = Join-Path $env:RUNNER_TEMP 'published-package-consumer'
+          New-Item -ItemType Directory -Path $consumer -Force | Out-Null
+          $references = foreach ($id in 'FYIsoft.Extensions.AI.Anthropic', 'FYIsoft.Extensions.AI.Jev') {
+            [xml]$project = Get-Content "src/$id/$id.csproj"
+            $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+            "<PackageReference Include=`"$id`" Version=`"$version`" />"
+          }
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+            <ItemGroup>$($references -join "`n")</ItemGroup>
+          </Project>
+          "@ | Set-Content (Join-Path $consumer 'Consumer.csproj')
+          @"
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="github" value="https://nuget.pkg.github.com/$env:PACKAGE_OWNER/index.json" />
+            </packageSources>
+            <packageSourceMapping>
+              <packageSource key="github"><package pattern="FYIsoft.Extensions.AI.*" /></packageSource>
+              <packageSource key="nuget.org"><package pattern="*" /></packageSource>
+            </packageSourceMapping>
+          </configuration>
+          "@ | Set-Content (Join-Path $consumer 'nuget.config')
+          Copy-Item eng/PackageSmoke/Program.cs (Join-Path $consumer 'Program.cs')
+          dotnet restore (Join-Path $consumer 'Consumer.csproj') --configfile (Join-Path $consumer 'nuget.config') --packages (Join-Path $consumer 'packages') --no-http-cache
+          if ($LASTEXITCODE -ne 0) { throw 'Published package restore failed.' }
+          dotnet run --project (Join-Path $consumer 'Consumer.csproj') -c Release --no-restore
+          if ($LASTEXITCODE -ne 0) { throw 'Published package consumer failed.' }
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-packages-release
+          path: |
+            artifacts/packages
+            artifacts/test-results

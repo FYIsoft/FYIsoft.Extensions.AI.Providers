@@ -2,6 +2,8 @@
 
 `IChatClient` for the Anthropic API and Anthropic Foundry SDK. Targets .NET 10.
 
+Install from [FYIsoft GitHub Packages](https://github.com/FYIsoft/FYIsoft.Extensions.AI.Providers/blob/main/docs/github-packages.md); see that guide for feed authentication and package commands.
+
 ```csharp
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Anthropic;

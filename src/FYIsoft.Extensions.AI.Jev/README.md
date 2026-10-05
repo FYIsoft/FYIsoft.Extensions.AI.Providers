@@ -2,6 +2,8 @@
 
 .NET client for [TypeSafe AI](https://docs.typesafe.ai)'s **Jev** model, ported from the `@typesafe-ai/sdk` JavaScript SDK (v0.6.0), with a `Microsoft.Extensions.AI` `IChatClient` adapter.
 
+Install from [FYIsoft GitHub Packages](https://github.com/FYIsoft/FYIsoft.Extensions.AI.Providers/blob/main/docs/github-packages.md); see that guide for feed authentication and package commands.
+
 Jev is a "System One" model. It does **not** generate text, stream, or call tools. You give it a *state* (text or JSON) and a set of typed questions, and it returns calibrated probabilities:
 
 | Question | Answer |

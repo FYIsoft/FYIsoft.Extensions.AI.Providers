@@ -9,6 +9,12 @@
 
 The [SupportDeskSample](samples/SupportDeskSample/README.md) console app uses both providers together. Jev triages each support ticket, Claude drafts a reply with a tool call, and Jev reviews the draft.
 
+## Install
+
+Both SDKs can be installed from the [FYIsoft GitHub Packages feed](docs/github-packages.md).
+The guide covers authentication, installation, package access, and publishing new versions.
+No NuGet.org account is needed.
+
 ## Build
 
 ```powershell
