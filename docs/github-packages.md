@@ -2,7 +2,8 @@
 
 The FYIsoft NuGet feed is `https://nuget.pkg.github.com/FYIsoft/index.json`.
 GitHub Packages requires authentication even for public NuGet packages. A NuGet.org account
-is not required. The SDKs target .NET 10.
+is not required. The SDKs target .NET 10. Both packages were published and restored successfully on 2026-10-05;
+see the [verified publication run](https://github.com/FYIsoft/FYIsoft.Extensions.AI.Providers/actions/runs/37317953231).
 
 ## Install in your application
 

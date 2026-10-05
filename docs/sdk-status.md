@@ -6,7 +6,8 @@ Both SDKs are packaged and verified offline and against live providers. **The ho
 blocker is resolved:** all four Anthropic live tests pass using the existing `claude-sonnet-4-6`
 Foundry deployment (version 1, Hosted on Anthropic). Jev's four live tests also pass. The sample's
 `claude-sonnet-5` deployment is version 2, Hosted on Azure, and cannot run hosted code execution.
-No Azure resources were created or changed, and neither package has been published.
+The SDK work created no Azure resources. Both packages were published to GitHub Packages on
+2026-10-05. They have not been published to NuGet.org.
 
 ## Six provider features added in 0.6.0-preview
 
@@ -59,8 +60,31 @@ dotnet test tests/FYIsoft.Extensions.AI.Anthropic.Tests -c Release `
 ```
 
 The MCP test calls only the public read-only `microsoft_docs_search` tool. Tests use a synthetic
-single-page PDF and synthetic cache prefix. Package publication and Telli UI integration remain
-separate release/consumer work; no package was published and no Telli files were changed.
+single-page PDF and synthetic cache prefix. GitHub Packages publication is complete as recorded below. Telli UI integration remains separate
+consumer work; no Telli files were changed.
+
+## GitHub Packages publication — 2026-10-05
+
+Both packages were published to `https://nuget.pkg.github.com/FYIsoft/index.json`:
+`FYIsoft.Extensions.AI.Anthropic` 0.6.0-preview and `FYIsoft.Extensions.AI.Jev` 0.1.0-preview.
+[Publication run 37317953231](https://github.com/FYIsoft/FYIsoft.Extensions.AI.Providers/actions/runs/37317953231)
+succeeded after building with zero warnings/errors, passing all 162 offline tests, and checking
+package contents. A consumer restored both packages from the GitHub feed into an empty cache
+and executed synthetic Anthropic and Jev calls successfully. No project references or local
+package feed were used in that final consumer verification.
+
+Publication used only the repository's short-lived GITHUB_TOKEN. No Foundry or TypeSafe
+credentials were supplied to the workflow. Downloaded release artifacts were checked against
+the locally configured credential values; no matches were found. Source commit:
+`6a816d11773c2c21c3faf9be6e57fea773bd68ad`.
+
+| Published package | SHA-256 |
+| --- | --- |
+| Anthropic 0.6.0-preview | `6604a0f65e8111e75841b2f8a4c9f5d879f784ef730fdd8e5182b1b2fe69489a` |
+| Jev 0.1.0-preview | `7a6d76d124f3d036cd5a4ab3c621a932ab44f385c991020419b11291e802b2f8` |
+
+See [GitHub Packages installation and publishing](github-packages.md) for feed setup and token
+requirements. NuGet.org is not required; GitHub's NuGet registry requires authentication to install.
 
 ## Where the projects stood
 
@@ -136,7 +160,7 @@ Local build evidence (ignored by Git):
 | Files | Explicit SDK upload/metadata/download with byte equality; 403/404/429 status preservation; live CSV sum 60 and PNG signature verified | None for the verified Foundry route |
 | Retry and errors | Counted HTTP requests with SDK retries configured; both constructors; failure before/after progress; live incompatible deployment rejection | None for the verified Foundry route |
 | Logging | Sensitive-marker assertions on error/retry paths | Application-specific logging configuration is caller-owned |
-| Packaging | Local restore and API execution from both nupkgs; live route evidence recorded | Commit/review, CI and preview publication |
+| Packaging | Local restore and API execution from both nupkgs; live route evidence recorded | GitHub Packages publication complete; NuGet.org publication optional |
 
 ## Live deployment record
 

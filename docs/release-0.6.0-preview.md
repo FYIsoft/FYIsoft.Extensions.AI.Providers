@@ -34,3 +34,15 @@ the repository in the existing .NET user-secrets store.
 
 Detailed audit output and package hashes are retained locally under
 `artifacts/release-audit/`, which is excluded from Git and NuGet packages.
+
+## Published to GitHub Packages
+
+On 2026-10-05, Anthropic 0.6.0-preview and Jev 0.1.0-preview were published to the FYIsoft
+GitHub Packages NuGet feed. [The publishing workflow](https://github.com/FYIsoft/FYIsoft.Extensions.AI.Providers/actions/runs/37317953231)
+passed its Release build, 162 offline tests, package-content check, and a fresh restore/execution
+of both packages from the published feed. No provider credentials were used by the workflow.
+Downloaded publication artifacts also passed the actual-credential check.
+
+[Installation and future publishing instructions](github-packages.md) cover GitHub authentication;
+a NuGet.org account is not required. Exact source commit and package hashes are in
+[SDK status](sdk-status.md#github-packages-publication--2026-10-05).
