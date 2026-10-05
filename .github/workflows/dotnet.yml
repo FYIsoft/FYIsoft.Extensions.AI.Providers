@@ -30,6 +30,8 @@ jobs:
       run: dotnet test -c Release --no-build --filter 'Category!=Live' --logger trx --results-directory artifacts/test-results
     - name: Pack
       run: dotnet pack -c Release --no-build --output artifacts/packages
+    - name: Verify package contents
+      run: python eng/verify-package-contents.py artifacts/packages
     - name: Upload verification artifacts
       if: always()
       uses: actions/upload-artifact@v4
