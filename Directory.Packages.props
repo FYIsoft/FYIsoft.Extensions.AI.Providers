@@ -12,10 +12,16 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
 
     <!-- Provider SDKs -->
     <PackageVersion Include="Anthropic" Version="12.29.0" />
     <PackageVersion Include="Anthropic.Foundry" Version="0.7.0" />
+
+    <!-- Azure (Decision1: TokenCredential in the library, DefaultAzureCredential in live tests only) -->
+    <PackageVersion Include="Azure.Core" Version="1.60.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
 
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

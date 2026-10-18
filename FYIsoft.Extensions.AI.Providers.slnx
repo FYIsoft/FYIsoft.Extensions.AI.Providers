@@ -4,10 +4,12 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/FYIsoft.Extensions.AI.Anthropic/FYIsoft.Extensions.AI.Anthropic.csproj" />
+    <Project Path="src/FYIsoft.Extensions.AI.Decision1/FYIsoft.Extensions.AI.Decision1.csproj" />
     <Project Path="src/FYIsoft.Extensions.AI.Jev/FYIsoft.Extensions.AI.Jev.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FYIsoft.Extensions.AI.Anthropic.Tests/FYIsoft.Extensions.AI.Anthropic.Tests.csproj" />
+    <Project Path="tests/FYIsoft.Extensions.AI.Decision1.Tests/FYIsoft.Extensions.AI.Decision1.Tests.csproj" />
     <Project Path="tests/FYIsoft.Extensions.AI.Jev.Tests/FYIsoft.Extensions.AI.Jev.Tests.csproj" />
   </Folder>
 </Solution>
