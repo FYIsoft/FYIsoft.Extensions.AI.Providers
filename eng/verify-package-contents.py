@@ -13,7 +13,7 @@ directory = Path(sys.argv[1])
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
 manifest = []
 expected_packages = set()
-for package_id in ("FYIsoft.Extensions.AI.Anthropic", "FYIsoft.Extensions.AI.Jev"):
+for package_id in ("FYIsoft.Extensions.AI.Anthropic", "FYIsoft.Extensions.AI.Decision1", "FYIsoft.Extensions.AI.Jev"):
     project = ET.parse(root / "src" / package_id / f"{package_id}.csproj")
     version = project.findtext(".//Version")
     package = directory / f"{package_id}.{version}.nupkg"
@@ -45,4 +45,4 @@ for package_id in ("FYIsoft.Extensions.AI.Anthropic", "FYIsoft.Extensions.AI.Jev
 if {p.name for p in directory.glob("*.nupkg")} != expected_packages:
     raise SystemExit("Unexpected packages in the publication directory.")
 (directory / "release-manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-print("Verified both SDK packages: only library DLLs, XML docs, README and NuGet metadata.")
+print("Verified all SDK packages: only library DLLs, XML docs, README and NuGet metadata.")

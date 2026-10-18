@@ -9,6 +9,59 @@ Foundry deployment (version 1, Hosted on Anthropic). Jev's four live tests also 
 The SDK work created no Azure resources. Both packages were published to GitHub Packages on
 2026-10-05. They have not been published to NuGet.org.
 
+## Microsoft-Decision-1: FYIsoft.Extensions.AI.Decision1 0.1.0-preview (2026-10-18)
+
+Branch `feature/microsoft-decision`, uncommitted, not published. A standalone typed client for the
+Foundry decision endpoint (`POST {endpoint}/providers/microsoft/v1/systemone`); it shares no code
+or design with the Jev project and has no `IChatClient` adapter. The model is in Preview and
+version 1 retires on 2027-02-04 (Foundry catalog).
+
+**Wire contract.** Established on 2026-10-18 by a raw HTTP probe script (Node `fetch`, not this SDK)
+against deployment `decision-1-test` (East US 2, 30 requests per minute): both host forms, Entra
+bearer and `api-key` auth, `api-version` ignored, all three question types in one request, a
+10-level score, and 400 (bad type, empty questions, 11 levels, choice criteria as an array), 401
+and 404 `DeploymentNotFound` errors. Measured p50 latency was about 120 ms over 10 sequential calls.
+The probe's response bodies are the offline test fixtures.
+
+**SDK live run.** All 3 live tests passed at 16:19:56 to 16:20:00 UTC on the same deployment with
+`DefaultAzureCredential` (restricted to the `az login` identity with
+`AZURE_TOKEN_CREDENTIALS=AzureCliCredential`): one combined noul/choice/score request (team
+`engineering`, severity 2.204 nearest `Major`, repeat contact 0.995, refund 0.002, usage 155/4),
+a server-side 400 `unsupported_request_argument` and a 404 `DeploymentNotFound` with one attempt.
+The first attempt, without that variable, picked up a service principal from `AZURE_CLIENT_*`
+environment variables and all three tests failed with HTTP **401 code `PermissionDenied`**
+("Principal does not have access to API/Operation"), which the docs list as 403. The client maps
+it to `Decision1AuthenticationException` and an offline test now covers it. API key auth was not
+run live by the SDK (only by the probe). Evidence: `artifacts/live-test-results/decision1/decision1-live.trx`.
+
+| Check | Result |
+| --- | --- |
+| Release solution build, warnings as errors | Pass: 0 warnings, 0 errors (all 3 SDKs, tests and SupportDeskSample) |
+| Decision1 offline tests | 117 passed, 3 live skipped |
+| Existing offline suites | Anthropic 120 passed, Jev 42 passed (unchanged) |
+| Decision1 live tests | 3 passed (Entra ID via `DefaultAzureCredential`) |
+| Packaging | `FYIsoft.Extensions.AI.Decision1.0.1.0-preview.nupkg` holds the DLL, XML docs and README; `eng/verify-package-contents.py` passes for all three packages |
+
+Offline coverage: exact request JSON for each question type (choice criteria as an object in caller
+order, score as an array, deployment as `model`, no `api-version`, `api-key` vs bearer headers),
+parsing of the real bodies, client-side limits (2 to 255 options, 2 to 10 levels, non-empty
+instructions, non-empty and unique question names), error mapping for 400/401/403/404/422/429/5xx,
+retries (429 with `x-ratelimit-reset-requests`, `retry-after-ms`, capped `Retry-After`, 503, 408,
+timeouts, connection failures; no retry on other 4xx), token caching and refresh, cancellation,
+DI with a shared token cache, configuration binding and environment fallback.
+
+Rerun the live tests (three requests):
+
+```powershell
+$env:DECISION1_LIVE_TESTS = '1'
+$env:DECISION1_ENDPOINT = 'https://<resource>.services.ai.azure.com'
+$env:DECISION1_DEPLOYMENT = '<deployment>'
+dotnet test tests/FYIsoft.Extensions.AI.Decision1.Tests -c Release --filter 'Category=Live' --logger trx
+```
+
+Not yet done: SDK-driven live API key auth, a live 429, `eng/PackageSmoke` and the publish
+workflow's consumer step still cover only Anthropic and Jev, and nothing has been published.
+
 ## Six provider features added in 0.6.0-preview
 
 - Thinking: ChatOptions.Reasoning maps to adaptive thinking/effort or an explicit manual budget.
