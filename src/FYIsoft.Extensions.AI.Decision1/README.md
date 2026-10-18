@@ -281,6 +281,50 @@ unique (so label lookups are unambiguous), and state must be text or a JSON obje
 Rate limits are per deployment (the test deployment allowed 30 requests per 60 seconds). Read
 `Metadata.RateLimitRemainingRequests` and `RateLimitResetRequests` to pace bulk work.
 
+## Testing your code
+
+Depend on `IDecision1Client` and fake it in unit tests. The response and answer types have no
+public constructors; build them with `Decision1ModelFactory`:
+
+```csharp
+using Microsoft.Extensions.AI.Decision1;
+
+sealed class StubDecision1Client(Decision1Response response) : IDecision1Client
+{
+    public Task<Decision1Response> DecideAsync(Decision1State state,
+        IEnumerable<KeyValuePair<string, Decision1Question>> questions, CancellationToken cancellationToken = default) =>
+        Task.FromResult(response);
+}
+
+var client = new StubDecision1Client(Decision1ModelFactory.Response(Decision1ModelFactory.DefaultModel,
+[
+    Decision1ModelFactory.ChoiceAnswer("team", "engineering",
+        new Dictionary<string, double> { ["billing"] = 0.05, ["engineering"] = 0.95 }),
+    Decision1ModelFactory.ScoreAnswer("severity", ["Cosmetic", "Minor", "Major", "Critical"], [0.0, 0.1, 0.7, 0.2]),
+    Decision1ModelFactory.NoulAnswer("repeat_contact", 0.99),
+],
+usage: Decision1ModelFactory.Usage(155, 4)));
+
+var router = new TicketRouter(client); // your code under test
+```
+
+The single-question `DecideAsync` overloads work against the fake too; they read the answer named
+by their `name` argument (`"answer"` by default). A mocking library works the same way: return the
+factory-built response from `DecideAsync`.
+
+- Each answer gets a `RawJson` in the service's wire shape, written and parsed by the SDK's own
+  wire code, so it matches what a real response with the same values contains.
+- `ScoreAnswer` computes `Score` as the probability-weighted average of the level indexes, as the
+  service does. Pass `score:` to override it.
+- `Confidence` is computed by the service and cannot be derived from the probabilities. The factory
+  defaults it to the probability of the chosen option (choice) or of the most probable level
+  (score); pass `confidence:` when your code depends on it.
+- Inputs are checked like questions are: probabilities from 0 through 1, 2 to 255 choice options,
+  2 to 10 score levels, unique non-empty labels, and a `choice` that is one of the labels. Invalid
+  input throws `ArgumentException`.
+- `UnknownAnswer(name, type, rawJson)` builds an answer of a type this SDK does not know.
+  `Usage(...)` and `ResponseMetadata(...)` default to zero tokens and a single HTTP 200 attempt.
+
 ## Verified service behavior
 
 A raw HTTP probe of a real deployment on 2026-10-18 established the wire contract this client implements:
@@ -307,7 +351,7 @@ Reference: [Deploy and use Microsoft-Decision-1 in Microsoft Foundry](https://le
 
 Offline tests use a synthetic `HttpMessageHandler` and the real probe bodies as fixtures. They
 cover request JSON for every question type, parsing, client-side validation, error mapping,
-retries, token caching, cancellation, DI and environment fallback.
+retries, token caching, cancellation, DI, environment fallback and the model factory.
 
 Live tests make three requests (one combined noul/choice/score request, one server-side 400 and
 one 404) and are skipped unless explicitly enabled:
