@@ -9,6 +9,8 @@
     </PackageReference>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Azure.Identity" />
+    <!-- The library compiles against Azure.Core 1.50.0 (its nuspec minimum); the tests run it on a newer one. -->
+    <PackageReference Include="Azure.Core" VersionOverride="1.60.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>

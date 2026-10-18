@@ -29,6 +29,11 @@ dotnet add package FYIsoft.Extensions.AI.Decision1 --prerelease
 The package depends on `Azure.Core` for `TokenCredential`. Add `Azure.Identity` yourself for
 `DefaultAzureCredential` or another credential type.
 
+Dependency minimums: `Azure.Core` 1.50.0, `Microsoft.Extensions.Http` 10.0.9,
+`Microsoft.Extensions.Logging.Abstractions` 10.0.9 and `Microsoft.Extensions.Options.ConfigurationExtensions`
+10.0.9. They are kept low on purpose, so an app on `Azure.Identity` 1.17.x and Microsoft.Extensions 10.0.9
+needs no upgrade; newer versions work too.
+
 ## Configure
 
 You need the Foundry resource endpoint and the **deployment name** (not the model name). Both
