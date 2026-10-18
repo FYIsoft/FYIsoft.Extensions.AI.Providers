@@ -9,6 +9,27 @@ Foundry deployment (version 1, Hosted on Anthropic). Jev's four live tests also 
 The SDK work created no Azure resources. Both packages were published to GitHub Packages on
 2026-10-05. They have not been published to NuGet.org.
 
+## Microsoft-Decision-1: FYIsoft.Extensions.AI.Decision1 0.1.2-preview (2026-10-18)
+
+0.1.2-preview: lower dependency minimums (Azure.Core 1.50.0, Logging.Abstractions 10.0.9) so consumers on
+Azure.Identity 1.17.x need no upgrades; no API change.
+
+Branch `feature/decision1-lower-dependency-minimums`, uncommitted, not published. Nuspec minimums are now
+`Azure.Core` 1.50.0, `Microsoft.Extensions.Http` 10.0.9, `Microsoft.Extensions.Logging.Abstractions` 10.0.9
+and `Microsoft.Extensions.Options.ConfigurationExtensions` 10.0.9 (Http 10.0.9 itself requires Logging.Abstractions
+and DependencyInjection.Abstractions 10.0.9). The central `Azure.Core` version is 1.50.0 (Decision1 is its only
+library user); Decision1 sets `VersionOverride="10.0.9"` on Logging.Abstractions because Anthropic and Jev keep
+the central 10.0.10. The Anthropic 0.6.1-preview and Jev 0.1.1-preview nuspecs are byte-identical before and after.
+The library compiles against Azure.Core 1.50.0; the test project runs it on Azure.Core 1.60.0 (`VersionOverride`)
+with Azure.Identity 1.21.0. `eng/verify-package-contents.py` now asserts the exact Decision1 dependency minimums.
+
+Release build with warnings as errors: 0 warnings. Offline tests: Decision1 197 passed, 3 live skipped; Anthropic
+120 passed, 9 skipped; Jev 42 passed, 4 skipped. Decision1 live tests: 200 passed, 0 skipped
+(`AZURE_TOKEN_CREDENTIALS=AzureCliCredential`). A throwaway consumer with CPM and transitive pinning (Azure.Identity
+1.17.1, Logging.Abstractions and DependencyInjection.Abstractions 10.0.9) restores 0.1.2-preview with no NU1109,
+NU1605 or NU1608, resolves Azure.Core 1.50.0, builds with 0 warnings and no CS0433 alongside `new DefaultAzureCredential()`,
+and runs. The same consumer on 0.1.1-preview resolves Azure.Core 1.60.0 and fails with CS0433 on `DefaultAzureCredential`.
+
 ## Microsoft-Decision-1: FYIsoft.Extensions.AI.Decision1 0.1.1-preview (2026-10-18)
 
 Branch `feature/decision1-model-factory`, uncommitted, not published. Adds `Decision1ModelFactory`, the public

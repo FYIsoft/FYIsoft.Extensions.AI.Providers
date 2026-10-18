@@ -19,8 +19,11 @@
     <PackageVersion Include="Anthropic" Version="12.29.0" />
     <PackageVersion Include="Anthropic.Foundry" Version="0.7.0" />
 
-    <!-- Azure (Decision1: TokenCredential in the library, DefaultAzureCredential in live tests only) -->
-    <PackageVersion Include="Azure.Core" Version="1.60.0" />
+    <!-- Azure (Decision1: TokenCredential in the library, DefaultAzureCredential in live tests only).
+         Azure.Core is the Decision1 nuspec minimum, kept at 1.50.0 so consumers on Azure.Identity 1.17.x
+         need no upgrade; eng/verify-package-contents.py asserts it. The Decision1 test project runs
+         on Azure.Core 1.60.0 through a VersionOverride. -->
+    <PackageVersion Include="Azure.Core" Version="1.50.0" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
 
     <!-- Testing -->
