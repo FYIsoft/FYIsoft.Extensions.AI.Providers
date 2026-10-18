@@ -85,7 +85,65 @@ internal static class Decision1Wire
         }
     }
 
-    private static Decision1Answer ParseAnswer(string name, JsonElement answer, Decision1ResponseMetadata metadata)
+    /// <summary>
+    /// Writes a <c>noul</c> answer object in the service's shape: <c>{"noul":p,"type":"noul"}</c>.
+    /// Keys follow the service's alphabetical order (see the probe fixtures).
+    /// </summary>
+    public static JsonElement WriteNoulAnswer(double noul) => WriteAnswer(writer =>
+    {
+        writer.WriteNumber("noul", noul);
+        writer.WriteString("type", "noul");
+    });
+
+    /// <summary>
+    /// Writes a <c>choice</c> answer object in the service's shape:
+    /// <c>{"choice":label,"confidence":c,"probabilities":{label:p,...},"type":"choice"}</c>.
+    /// </summary>
+    public static JsonElement WriteChoiceAnswer(string choice, double confidence, IEnumerable<KeyValuePair<string, double>> probabilities) => WriteAnswer(writer =>
+    {
+        writer.WriteString("choice", choice);
+        writer.WriteNumber("confidence", confidence);
+        writer.WriteStartObject("probabilities");
+        foreach (var (label, probability) in probabilities)
+            writer.WriteNumber(label, probability);
+        writer.WriteEndObject();
+        writer.WriteString("type", "choice");
+    });
+
+    /// <summary>
+    /// Writes a <c>score</c> answer object in the service's shape:
+    /// <c>{"confidence":c,"legend":{"0":label,...},"probabilities":{"0":p,...},"score":s,"type":"score"}</c>.
+    /// </summary>
+    public static JsonElement WriteScoreAnswer(double score, double confidence, IEnumerable<Decision1ScoreLevel> levels) => WriteAnswer(writer =>
+    {
+        writer.WriteNumber("confidence", confidence);
+        writer.WriteStartObject("legend");
+        foreach (var level in levels)
+            writer.WriteString(level.Index.ToString(CultureInfo.InvariantCulture), level.Label);
+        writer.WriteEndObject();
+        writer.WriteStartObject("probabilities");
+        foreach (var level in levels)
+            writer.WriteNumber(level.Index.ToString(CultureInfo.InvariantCulture), level.Probability);
+        writer.WriteEndObject();
+        writer.WriteNumber("score", score);
+        writer.WriteString("type", "score");
+    });
+
+    private static JsonElement WriteAnswer(Action<Utf8JsonWriter> writeProperties)
+    {
+        var buffer = new ArrayBufferWriter<byte>(128);
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writeProperties(writer);
+            writer.WriteEndObject();
+        }
+        using var document = JsonDocument.Parse(buffer.WrittenMemory);
+        return document.RootElement.Clone();
+    }
+
+    /// <summary>Builds the typed answer for one answer object, exactly as a response body is parsed.</summary>
+    public static Decision1Answer ParseAnswer(string name, JsonElement answer, Decision1ResponseMetadata metadata)
     {
         if (answer.ValueKind != JsonValueKind.Object || !answer.TryGetProperty("type", out var t) || t.ValueKind != JsonValueKind.String)
             throw Malformed($"answer '{name}' has no type", metadata);

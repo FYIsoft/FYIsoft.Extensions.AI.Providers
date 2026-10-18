@@ -9,6 +9,15 @@ Foundry deployment (version 1, Hosted on Anthropic). Jev's four live tests also 
 The SDK work created no Azure resources. Both packages were published to GitHub Packages on
 2026-10-05. They have not been published to NuGet.org.
 
+## Microsoft-Decision-1: FYIsoft.Extensions.AI.Decision1 0.1.1-preview (2026-10-18)
+
+Branch `feature/decision1-model-factory`, uncommitted, not published. Adds `Decision1ModelFactory`, the public
+way to build `Decision1Response` and answers so consumers can fake `IDecision1Client` in unit tests
+(constructors stay internal). Release build with warnings as errors: 0 warnings. Offline tests: Decision1
+197 passed, 3 live skipped (80 new factory tests); Anthropic 120 passed, 9 skipped; Jev 42 passed, 4 skipped.
+Decision1 live tests: 3 passed (`AZURE_TOKEN_CREDENTIALS=AzureCliCredential`). `FYIsoft.Extensions.AI.Decision1.0.1.1-preview.nupkg`
+packs, and `eng/verify-package-contents.py` passes for all three packages.
+
 ## Microsoft-Decision-1: FYIsoft.Extensions.AI.Decision1 0.1.0-preview (2026-10-18)
 
 Branch `feature/microsoft-decision`, uncommitted, not published. A standalone typed client for the

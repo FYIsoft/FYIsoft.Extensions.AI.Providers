@@ -9,7 +9,7 @@
     <PackageId>FYIsoft.Extensions.AI.Decision1</PackageId>
     <AssemblyName>FYIsoft.Extensions.AI.Decision1</AssemblyName>
     <RootNamespace>Microsoft.Extensions.AI.Decision1</RootNamespace>
-    <Version>0.1.0-preview</Version>
+    <Version>0.1.1-preview</Version>
     <Description>Typed .NET client for Microsoft-Decision-1, the Microsoft Foundry decision model. Sends text or JSON state with noul, choice and score questions to the Foundry decision endpoint and returns typed probabilities. Supports Microsoft Entra ID (TokenCredential) and API key authentication, retries with backoff, typed errors and IHttpClientFactory registration.</Description>
     <PackageTags>AI;Microsoft;Foundry;Azure;Decision;Microsoft-Decision-1;Classification;Routing;Scoring</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
