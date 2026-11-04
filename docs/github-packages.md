@@ -37,7 +37,7 @@ $githubToken = Read-Host 'GitHub classic token with read:packages' -MaskInput
 $env:NuGetPackageSourceCredentials_github = "Username=$githubUser;Password=$githubToken;ValidAuthenticationTypes=Basic"
 Remove-Variable githubToken
 
-dotnet add package FYIsoft.Extensions.AI.Anthropic --version 0.6.1-preview
+dotnet add package FYIsoft.Extensions.AI.Anthropic --version 0.6.2-preview
 dotnet add package FYIsoft.Extensions.AI.Jev --version 0.1.1-preview
 ```
 
