@@ -227,7 +227,7 @@ public sealed class AnthropicChatClient : IChatClient
             streamFactory: () => AnthropicStreamingConverter.ConvertStreamAsync(
                 service.CreateStreaming(createParams, cancellationToken),
                 Metadata,
-                cancellationToken, execution),
+                cancellationToken, execution, _logger),
             shouldRetry: ex => ex is Anthropic5xxException or AnthropicIOException,
             onRetry: (ex, attempt) => _logger.LogWarning(
                 "Transient Anthropic failure during streaming ({ExceptionType}, attempt {Attempt}); retrying.",

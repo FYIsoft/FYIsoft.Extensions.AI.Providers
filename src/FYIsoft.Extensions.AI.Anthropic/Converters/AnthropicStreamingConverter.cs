@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Anthropic.Models.Messages;
+using Microsoft.Extensions.Logging;
 using M = Microsoft.Extensions.AI.Anthropic.AnthropicCodeExecutionMetadata;
 using static Microsoft.Extensions.AI.Anthropic.AnthropicContentEnvelope;
 
@@ -15,7 +16,8 @@ internal static class AnthropicStreamingConverter
         IAsyncEnumerable<RawMessageStreamEvent> streamingEvents,
         ChatClientMetadata metadata,
         [EnumeratorCancellation] CancellationToken cancellationToken = default,
-        AnthropicExecutionContext? execution = null)
+        AnthropicExecutionContext? execution = null,
+        ILogger? logger = null)
     {
         var blocks = new SortedDictionary<int, Block>();
         string? id = null, model = null, stopReason = null;
@@ -127,7 +129,14 @@ internal static class AnthropicStreamingConverter
                     if (!blocks.TryGetValue(stopIndex, out var finished) || finished.Stopped)
                         throw new JsonException("Stop references a missing or stopped content block.");
                     finished.Finish();
-                    if (!finished.Complete) valid = false;
+                    if (!finished.Complete)
+                    {
+                        valid = false;
+                        // The block is not emitted and the response is marked incomplete; say why.
+                        logger?.LogWarning(
+                            "Anthropic stream content block {BlockIndex} ({BlockType} {ToolName}, id {BlockId}) in message {MessageId} is invalid and was not emitted: {Reason}. The response is marked incomplete.",
+                            stopIndex, finished.Type, finished.Operation, finished.Id, id, finished.Error ?? "unsupported delta");
+                    }
                     if (finished.Complete)
                     {
                         var converted = execution is not null && (execution.Enabled || blocks.Values.Any(b => AnthropicProviderFeatures.Rich(b.Json())))
@@ -183,12 +192,15 @@ internal static class AnthropicStreamingConverter
         private readonly Dictionary<string, StringBuilder> _strings = new();
         private readonly StringBuilder _input = new();
         private bool _hasInputDelta, _valid = true;
+        private bool IsToolUse => Type is "tool_use" or "server_tool_use" or "mcp_tool_use";
         public Block(JsonElement json) => _body = JsonNode.Parse(json.GetRawText())!.AsObject();
         public string? Type => _body["type"]?.GetValue<string>();
         public string? Id => _body["id"]?.GetValue<string>();
         public string? Operation => _body["name"]?.GetValue<string>();
         public bool Stopped { get; private set; }
         public bool Complete { get; private set; }
+        /// <summary>Why the block is invalid, when known. Never contains the tool input itself.</summary>
+        public string? Error { get; private set; }
         public JsonElement Json() => JsonSerializer.SerializeToElement(_body);
         public bool Apply(JsonElement delta)
         {
@@ -226,12 +238,25 @@ internal static class AnthropicStreamingConverter
         {
             Stopped = true;
             foreach (var (key, builder) in _strings) _body[key] = builder.ToString();
-            if (_hasInputDelta)
+            // A call to a tool with no parameters streams no input fragments, or only empty ones
+            // ("partial_json": ""). Empty input means no arguments: keep the input from
+            // content_block_start (normally {}) instead of parsing an empty string.
+            var buffered = _input.ToString();
+            if (_hasInputDelta && !string.IsNullOrWhiteSpace(buffered))
             {
-                try { _body["input"] = JsonNode.Parse(_input.ToString()); }
-                catch (JsonException) { _valid = false; }
+                try { _body["input"] = JsonNode.Parse(buffered); }
+                catch (JsonException ex)
+                {
+                    _valid = false;
+                    Error = $"tool input is not valid JSON ({buffered.Length} characters buffered): {ex.Message}";
+                }
             }
-            if (Type is "tool_use" or "server_tool_use" or "mcp_tool_use" && _body["input"] is not JsonObject) _valid = false;
+            if (IsToolUse && _valid && _body["input"] is null) _body["input"] = new JsonObject();
+            if (IsToolUse && _valid && _body["input"] is not JsonObject)
+            {
+                _valid = false;
+                Error = $"tool input is a JSON {_body["input"]!.GetValueKind()}, not an object";
+            }
             Complete = _valid;
         }
     }
